@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Triton Matmul Kernel Visualization</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* bg-gray-900 */
+            color: #f3f4f6; /* text-gray-200 */
+        }
+        .matrix-grid {
+            display: grid;
+            gap: 2px;
+        }
+        .matrix-cell {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            border: 1px solid #374151; /* border-gray-700 */
+            border-radius: 4px;
+            transition: all 0.2s ease-in-out;
+        }
+        .matrix-cell.highlight-a { background-color: #3b82f6; color: white; } /* bg-blue-500 */
+        .matrix-cell.highlight-b { background-color: #ef4444; color: white; } /* bg-red-500 */
+        .matrix-cell.highlight-c { background-color: #22c55e; color: white; } /* bg-green-500 */
+        .matrix-cell.highlight-c-dest { border-color: #22c55e; border-width: 2px; }
+        .matrix-cell.masked { background-color: #4b5563; } /* bg-gray-600 */
+
+        .code-block {
+            font-family: 'Fira Code', monospace;
+            background-color: #1f2937; /* bg-gray-800 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            color: #d1d5db; /* text-gray-300 */
+        }
+        .code-line {
+            transition: background-color 0.3s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .code-line.active-line {
+            background-color: #374151; /* bg-gray-700 */
+        }
+        .code-value {
+            color: #a78bfa; /* text-violet-400 */
+            font-style: italic;
+            padding-left: 2rem;
+            white-space: pre;
+        }
+        .control-panel input[type=number] {
+            background-color: #374151; /* bg-gray-700 */
+            border: 1px solid #4b5563; /* border-gray-600 */
+            color: white;
+            border-radius: 0.375rem;
+            padding: 0.5rem;
+            width: 60px;
+            text-align: center;
+        }
+        .btn {
+            background-color: #2563eb; /* bg-blue-600 */
+            color: white;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            transition: background-color 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #1d4ed8; /* bg-blue-700 */
+        }
+        .btn:disabled {
+            background-color: #4b5563; /* bg-gray-600 */
+            cursor: not-allowed;
+        }
+        .btn-green { background-color: #16a34a; } /* bg-green-600 */
+        .btn-green:hover { background-color: #15803d; } /* bg-green-700 */
+        .btn-red { background-color: #dc2626; } /* bg-red-600 */
+        .btn-red:hover { background-color: #b91c1c; } /* bg-red-700 */
+    </style>
+</head>
+<body class="p-4 md:p-6">
+
+    <div class="max-w-screen-2xl mx-auto">
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-white">Interactive Triton Matmul Kernel Visualization</h1>
+            <p class="text-gray-400 mt-2">Step through or autoplay the `matmul_kernel` to understand its inner workings.</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 lg:gap-8">
+            <!-- Left Column: Controls & Code -->
+            <div>
+                <!-- Controls -->
+                <div class="control-panel bg-gray-800 p-4 rounded-lg mb-6">
+                    <div class="flex flex-wrap items-center justify-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <label>M:</label><input type="number" id="M" value="16">
+                            <label>N:</label><input type="number" id="N" value="16">
+                            <label>K:</label><input type="number" id="K" value="16">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label>BLOCK_M:</label><input type="number" id="BLOCK_SIZE_M" value="16">
+                            <label>BLOCK_N:</label><input type="number" id="BLOCK_SIZE_N" value="16">
+                            <label>BLOCK_K:</label><input type="number" id="BLOCK_SIZE_K" value="16">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label>GROUP_M:</label><input type="number" id="GROUP_SIZE_M" value="8">
+                        </div>
+                        <button id="resetBtn" class="btn">Reset</button>
+                    </div>
+                </div>
+
+                <!-- Simulation State & Controls -->
+                <div class="bg-gray-800 p-4 rounded-lg mb-6">
+                    <h2 class="text-lg font-semibold mb-3 text-center">Simulation Controls</h2>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <button id="stepBtn" class="btn w-full">Next Step</button>
+                        <button id="autoplayBtn" class="btn btn-green w-full">Autoplay</button>
+                        <button id="pauseBtn" class="btn btn-red w-full hidden">Pause</button>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <label for="speedSlider" class="text-sm">Speed:</label>
+                        <input type="range" id="speedSlider" min="50" max="1000" value="800" class="w-full">
+                    </div>
+                    <div id="info" class="mt-4 text-sm text-gray-300 space-y-2"></div>
+                    <div id="variable-display" class="mt-4 text-sm text-gray-300 space-y-1"></div>
+                </div>
+
+                <!-- Code -->
+                <div class="bg-gray-800 p-4 rounded-lg">
+                    <h2 class="text-lg font-semibold mb-2">Kernel Code</h2>
+                    <div class="code-block" id="code-display"></div>
+                </div>
+            </div>
+
+            <!-- Right Column: Matrices -->
+            <div class="mt-8 lg:mt-0">
+                <div class="grid grid-cols-1 gap-8">
+                     <div class="text-center">
+                        <h2 class="text-xl font-bold mb-2">Matrix A (M x K)</h2>
+                        <div id="matrixA" class="matrix-grid mx-auto"></div>
+                    </div>
+                    <div class="text-center">
+                        <h2 class="text-xl font-bold mb-2">Matrix B (K x N)</h2>
+                        <div id="matrixB" class="matrix-grid mx-auto"></div>
+                    </div>
+                    <div class="text-center">
+                        <h2 class="text-xl font-bold mb-2">Matrix C (M x N)</h2>
+                        <div id="matrixC" class="matrix-grid mx-auto"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const M_in = document.getElementById('M');
+        const N_in = document.getElementById('N');
+        const K_in = document.getElementById('K');
+        const BLOCK_SIZE_M_in = document.getElementById('BLOCK_SIZE_M');
+        const BLOCK_SIZE_N_in = document.getElementById('BLOCK_SIZE_N');
+        const BLOCK_SIZE_K_in = document.getElementById('BLOCK_SIZE_K');
+        const GROUP_SIZE_M_in = document.getElementById('GROUP_SIZE_M');
+
+        const stepBtn = document.getElementById('stepBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const autoplayBtn = document.getElementById('autoplayBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const speedSlider = document.getElementById('speedSlider');
+
+        const matrixAContainer = document.getElementById('matrixA');
+        const matrixBContainer = document.getElementById('matrixB');
+        const matrixCContainer = document.getElementById('matrixC');
+
+        const infoDiv = document.getElementById('info');
+        const variableDisplayDiv = document.getElementById('variable-display');
+        const codeDisplay = document.getElementById('code-display');
+
+        // --- Simulation State ---
+        let M, N, K, BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K, GROUP_SIZE_M;
+        let pid, k_loop_iter;
+        let num_pid_m, num_pid_n;
+        let grid_size;
+        let accumulator;
+        let C_matrix_values;
+        let isAutoplaying = false;
+        let autoplayIntervalId = null;
+        let autoplaySpeed = 200; // default speed (1000 - 800)
+        let lineValues = {};
+
+        const kernelCode = [
+            `pid = tl.program_id(axis=0)`, `num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)`, `num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)`, `num_pid_in_group = GROUP_SIZE_M * num_pid_n`, `group_id = pid // num_pid_in_group`, `first_pid_m = group_id * GROUP_SIZE_M`, `group_size_m = min(num_pid_m - first_pid_m, GROUP_SIZE_M)`, `pid_m = first_pid_m + ((pid % num_pid_in_group) % group_size_m)`, `pid_n = (pid % num_pid_in_group) // group_size_m`, `offs_am = ...`, `offs_bn = ...`, `offs_k = ...`, `a_ptrs = ...`, `b_ptrs = ...`, `accumulator = tl.zeros(...)`, `for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)):`, `  a = tl.load(a_ptrs, mask=...)`, `  b = tl.load(b_ptrs, mask=...)`, `  accumulator = tl.dot(a, b, accumulator)`, `  a_ptrs += ...`, `  b_ptrs += ...`, `c = accumulator.to(tl.float16)`, `offs_cm = ...`, `offs_cn = ...`, `c_ptrs = ...`, `tl.store(c_ptrs, c, mask=...)`, `--- End of Program ---`
+        ];
+        const lineVariableMap = {
+            0: 'pid', 1: 'num_pid_m', 2: 'num_pid_n', 3: 'num_pid_in_group', 4: 'group_id', 5: 'first_pid_m', 6: 'group_size_m', 7: 'pid_m', 8: 'pid_n'
+        };
+        let current_line = 0;
+
+        function init() {
+            pauseAutoplay();
+            M = parseInt(M_in.value);
+            N = parseInt(N_in.value);
+            K = parseInt(K_in.value);
+            BLOCK_SIZE_M = parseInt(BLOCK_SIZE_M_in.value);
+            BLOCK_SIZE_N = parseInt(BLOCK_SIZE_N_in.value);
+            BLOCK_SIZE_K = parseInt(BLOCK_SIZE_K_in.value);
+            GROUP_SIZE_M = parseInt(GROUP_SIZE_M_in.value);
+            
+            pid = 0;
+            k_loop_iter = 0;
+            current_line = 0;
+            lineValues = {};
+            
+            num_pid_m = Math.ceil(M / BLOCK_SIZE_M);
+            num_pid_n = Math.ceil(N / BLOCK_SIZE_N);
+            grid_size = num_pid_m * num_pid_n;
+            
+            C_matrix_values = Array(M).fill(0).map(() => Array(N).fill(0));
+
+            createMatrix('A', M, K, matrixAContainer);
+            createMatrix('B', K, N, matrixBContainer);
+            createMatrix('C', M, N, matrixCContainer);
+            
+            updateCodeDisplay();
+            updateInfo();
+            clearHighlights();
+            stepBtn.disabled = false;
+        }
+
+        function createMatrix(name, rows, cols, container) {
+            container.innerHTML = '';
+            container.style.gridTemplateColumns = `repeat(${cols}, 28px)`;
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('matrix-cell');
+                    cell.id = `${name}-${i}-${j}`;
+                    container.appendChild(cell);
+                }
+            }
+        }
+        
+        function updateCodeDisplay(values = {}) {
+            codeDisplay.innerHTML = kernelCode.map((line, index) => {
+                const isActive = index === current_line;
+                const varName = lineVariableMap[index];
+                let valueToShow = '';
+                if (varName && (values[varName] !== undefined || lineValues[varName] !== undefined)) {
+                     // Update stored value if new one is available
+                    if (values[varName] !== undefined) lineValues[varName] = values[varName];
+                    // Show value if the line has been executed or is being executed
+                    if (index <= current_line) {
+                       valueToShow = `// ${lineValues[varName]}`;
+                    }
+                }
+
+                return `<div class="code-line ${isActive ? 'active-line' : ''}">` +
+                       `<span>${line.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>` +
+                       `<span class="code-value">${valueToShow}</span>` +
+                       `</div>`;
+            }).join('');
+        }
+
+        function step() {
+            if (pid >= grid_size) {
+                infoDiv.innerHTML = '<div><strong>Simulation Complete!</strong></div>';
+                variableDisplayDiv.innerHTML = '';
+                current_line = kernelCode.length - 1;
+                updateCodeDisplay(lineValues);
+                pauseAutoplay();
+                stepBtn.disabled = true;
+                return;
+            }
+            
+            clearHighlights();
+
+            const num_pid_in_group = GROUP_SIZE_M * num_pid_n;
+            const group_id = Math.floor(pid / num_pid_in_group);
+            const first_pid_m = group_id * GROUP_SIZE_M;
+            const group_size_m = Math.min(num_pid_m - first_pid_m, GROUP_SIZE_M);
+            const pid_m = first_pid_m + ((pid % num_pid_in_group) % group_size_m);
+            const pid_n = Math.floor((pid % num_pid_in_group) / group_size_m);
+            
+            const currentValues = { pid, num_pid_m, num_pid_n, num_pid_in_group, group_id, first_pid_m, group_size_m, pid_m, pid_n };
+
+            const total_k_loops = Math.ceil(K / BLOCK_SIZE_K);
+
+            if (current_line < 15) {
+                 current_line++;
+            } else if (current_line >= 15 && current_line < 21) {
+                if (k_loop_iter === 0 && current_line === 15) {
+                     accumulator = Array(BLOCK_SIZE_M).fill(0).map(() => Array(BLOCK_SIZE_N).fill(0));
+                }
+                
+                highlightBlockA(pid_m, k_loop_iter);
+                highlightBlockB(pid_n, k_loop_iter);
+                highlightBlockC(pid_m, pid_n, true);
+
+                for (let m_inner = 0; m_inner < BLOCK_SIZE_M; m_inner++) {
+                    for (let n_inner = 0; n_inner < BLOCK_SIZE_N; n_inner++) {
+                        let dot_product = 0;
+                        for (let k_inner = 0; k_inner < BLOCK_SIZE_K; k_inner++) {
+                             const m = (pid_m * BLOCK_SIZE_M + m_inner);
+                             const n = (pid_n * BLOCK_SIZE_N + n_inner);
+                             const k = k_loop_iter * BLOCK_SIZE_K + k_inner;
+                             if (m < M && n < N && k < K) {
+                                dot_product += 1; 
+                             }
+                        }
+                        accumulator[m_inner][n_inner] += dot_product;
+                    }
+                }
+                
+                current_line++;
+                if (current_line > 20) {
+                    k_loop_iter++;
+                    if (k_loop_iter < total_k_loops) {
+                        current_line = 16;
+                    } else {
+                        current_line = 21;
+                    }
+                }
+
+            } else {
+                 current_line++;
+                 if (current_line > 25) {
+                    for (let m_inner = 0; m_inner < BLOCK_SIZE_M; m_inner++) {
+                        for (let n_inner = 0; n_inner < BLOCK_SIZE_N; n_inner++) {
+                            const m = pid_m * BLOCK_SIZE_M + m_inner;
+                            const n = pid_n * BLOCK_SIZE_N + n_inner;
+                            if (m < M && n < N) {
+                                C_matrix_values[m][n] = accumulator[m_inner][n_inner];
+                                const cell = document.getElementById(`C-${m}-${n}`);
+                                cell.innerText = C_matrix_values[m][n];
+                                cell.classList.add('highlight-c');
+                            }
+                        }
+                    }
+                    pid++;
+                    k_loop_iter = 0;
+                    current_line = 0;
+                    lineValues = {}; // Reset for next program
+                 }
+            }
+            
+            updateCodeDisplay(currentValues);
+            updateInfo({pid_m, pid_n, group_id, k_loop_iter, total_k_loops, ...currentValues});
+        }
+
+        function clearHighlights() {
+            document.querySelectorAll('.matrix-cell').forEach(c => {
+                c.classList.remove('highlight-a', 'highlight-b', 'highlight-c', 'highlight-c-dest');
+            });
+        }
+
+        function highlightBlockA(pid_m, k_iter) {
+            const start_row = pid_m * BLOCK_SIZE_M;
+            const start_col = k_iter * BLOCK_SIZE_K;
+            for (let i = 0; i < BLOCK_SIZE_M; i++) {
+                for (let j = 0; j < BLOCK_SIZE_K; j++) {
+                    const row = start_row + i;
+                    const col = start_col + j;
+                    if (row < M && col < K) {
+                        document.getElementById(`A-${row}-${col}`).classList.add('highlight-a');
+                    }
+                }
+            }
+        }
+
+        function highlightBlockB(pid_n, k_iter) {
+            const start_row = k_iter * BLOCK_SIZE_K;
+            const start_col = pid_n * BLOCK_SIZE_N;
+            for (let i = 0; i < BLOCK_SIZE_K; i++) {
+                for (let j = 0; j < BLOCK_SIZE_N; j++) {
+                    const row = start_row + i;
+                    const col = start_col + j;
+                    if (row < K && col < N) {
+                        document.getElementById(`B-${row}-${col}`).classList.add('highlight-b');
+                    }
+                }
+            }
+        }
+
+        function highlightBlockC(pid_m, pid_n, is_dest = false) {
+            const start_row = pid_m * BLOCK_SIZE_M;
+            const start_col = pid_n * BLOCK_SIZE_N;
+            for (let i = 0; i < BLOCK_SIZE_M; i++) {
+                for (let j = 0; j < BLOCK_SIZE_N; j++) {
+                    const row = start_row + i;
+                    const col = start_col + j;
+                    if (row < M && col < N) {
+                         const cell = document.getElementById(`C-${row}-${col}`);
+                         if(is_dest) cell.classList.add('highlight-c-dest');
+                         else cell.classList.add('highlight-c');
+                    }
+                }
+            }
+        }
+        
+        function updateInfo(data = {}) {
+            const { pid_m, pid_n, group_id, k_loop_iter, total_k_loops, num_pid_in_group, first_pid_m, group_size_m } = data;
+            
+            infoDiv.innerHTML = `<div><strong>Grid Size:</strong> ${grid_size} programs</div><div><strong>Current Program ID (pid):</strong> ${pid}</div><hr class="border-gray-600 my-1">${pid_m !== undefined ? `<div><strong>K-Loop Iteration:</strong> ${k_loop_iter || 0} / ${total_k_loops || Math.ceil(K / BLOCK_SIZE_K)}</div>` : '<div>Press "Next Step" or "Autoplay".</div>'}`;
+
+            if (pid_m !== undefined) {
+                variableDisplayDiv.innerHTML = `<h3 class="font-semibold text-base mt-3 mb-1 text-gray-100">Calculated Variables</h3><div><strong>num_pid_m:</strong> ${num_pid_m}</div><div><strong>num_pid_n:</strong> ${num_pid_n}</div><div><strong>num_pid_in_group:</strong> ${num_pid_in_group}</div><div><strong>group_id:</strong> ${group_id}</div><div><strong>first_pid_m:</strong> ${first_pid_m}</div><div><strong>group_size_m:</strong> ${group_size_m}</div><hr class="border-gray-600 my-1"><div class="font-bold text-white"><strong>pid_m (row block):</strong> ${pid_m}</div><div class="font-bold text-white"><strong>pid_n (col block):</strong> ${pid_n}</div>`;
+            } else {
+                variableDisplayDiv.innerHTML = '';
+            }
+        }
+
+        function startAutoplay() {
+            isAutoplaying = true;
+            autoplayBtn.classList.add('hidden');
+            pauseBtn.classList.remove('hidden');
+            stepBtn.disabled = true;
+
+            autoplayIntervalId = setInterval(step, autoplaySpeed);
+        }
+
+        function pauseAutoplay() {
+            isAutoplaying = false;
+            clearInterval(autoplayIntervalId);
+            autoplayIntervalId = null;
+            autoplayBtn.classList.remove('hidden');
+            pauseBtn.classList.add('hidden');
+            stepBtn.disabled = (pid >= grid_size);
+        }
+
+        function handleSpeedChange(e) {
+            autoplaySpeed = 1050 - e.target.value; // Invert so right is faster
+            if (isAutoplaying) {
+                clearInterval(autoplayIntervalId);
+                autoplayIntervalId = setInterval(step, autoplaySpeed);
+            }
+        }
+
+        // --- Event Listeners ---
+        stepBtn.addEventListener('click', step);
+        resetBtn.addEventListener('click', init);
+        autoplayBtn.addEventListener('click', startAutoplay);
+        pauseBtn.addEventListener('click', pauseAutoplay);
+        speedSlider.addEventListener('input', handleSpeedChange);
+
+        // --- Initial Load ---
+        init();
+    </script>
+</body>
+</html>
