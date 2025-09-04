@@ -1,168 +1,330 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Triton Matmul Kernel Visualization</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
     <style>
+        :root {
+            --glow-a: 0 0 15px rgba(59, 130, 246, 0.5);
+            --glow-b: 0 0 15px rgba(239, 68, 68, 0.5);
+            --glow-c: 0 0 15px rgba(34, 197, 94, 0.6);
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #111827; /* bg-gray-900 */
-            color: #f3f4f6; /* text-gray-200 */
+            background-color: #1a202c;
+            /* Changed from dark blue to dark slate */
+            color: #e5e7eb;
+            /* text-gray-200 */
         }
+
+        .panel {
+            background: rgba(45, 55, 72, 0.6);
+            /* Adjusted for new background */
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+        }
+
+        .main-header {
+            background: linear-gradient(to right, #1e3a8a, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
         .matrix-grid {
             display: grid;
-            gap: 2px;
+            gap: 3px;
         }
+
         .matrix-cell {
-            width: 28px;
-            height: 28px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.7rem;
-            border: 1px solid #374151; /* border-gray-700 */
+            border: 1px solid #374151;
+            /* border-gray-700 */
             border-radius: 4px;
             transition: all 0.2s ease-in-out;
+            width: 28px;
+            height: 28px;
+            font-size: 0.7rem;
         }
-        .matrix-cell.highlight-a { background-color: #3b82f6; color: white; } /* bg-blue-500 */
-        .matrix-cell.highlight-b { background-color: #ef4444; color: white; } /* bg-red-500 */
-        .matrix-cell.highlight-c { background-color: #22c55e; color: white; } /* bg-green-500 */
-        .matrix-cell.highlight-c-dest { border-color: #22c55e; border-width: 2px; }
-        .matrix-cell.masked { background-color: #4b5563; } /* bg-gray-600 */
+
+        .matrix-cell.highlight-a {
+            background-color: #3b82f6;
+            color: white;
+            box-shadow: var(--glow-a);
+        }
+
+        .matrix-cell.highlight-b {
+            background-color: #ef4444;
+            color: white;
+            box-shadow: var(--glow-b);
+        }
+
+        .matrix-cell.highlight-c {
+            background-color: #22c55e;
+            color: white;
+            box-shadow: var(--glow-c);
+        }
+
+        .matrix-cell.highlight-c-dest {
+            border-color: #22c55e;
+            border-width: 2px;
+            box-shadow: var(--glow-c);
+        }
+
+        .matrix-cell.masked {
+            background-color: #4b5563;
+        }
+
+        /* bg-gray-600 */
 
         .code-block {
             font-family: 'Fira Code', monospace;
-            background-color: #1f2937; /* bg-gray-800 */
+            background-color: rgba(26, 32, 44, 0.8);
+            /* Adjusted for new background */
             padding: 1rem;
             border-radius: 0.5rem;
             overflow-x: auto;
             font-size: 0.875rem;
             line-height: 1.6;
-            color: #d1d5db; /* text-gray-300 */
+            color: #d1d5db;
+            /* text-gray-300 */
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
+
+        .code-comment {
+            color: #6b7280;
+            /* gray-500 */
+            font-style: italic;
+        }
+
         .code-line {
             transition: background-color 0.3s ease;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
+
         .code-line.active-line {
-            background-color: #374151; /* bg-gray-700 */
+            background-color: rgba(55, 65, 81, 0.7);
+            /* bg-gray-700 */
         }
+
+        .has-tooltip {
+            position: relative;
+            cursor: help;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+            text-decoration-color: #6b7280;
+            /* gray-500 */
+        }
+
+        #global-tooltip {
+            position: fixed;
+            visibility: hidden;
+            width: max-content;
+            background: rgba(26, 32, 44, 0.8);
+            /* Adjusted for new background */
+            backdrop-filter: blur(5px);
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 8px;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.8rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            line-height: 1.5;
+            pointer-events: none;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        #global-tooltip.visible {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .tooltip-matrix {
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        .tooltip-matrix td {
+            border: 1px solid #4b5563;
+            padding: 2px 5px;
+            text-align: center;
+            min-width: 20px;
+        }
+
         .code-value {
-            color: #a78bfa; /* text-violet-400 */
+            color: #a78bfa;
+            /* text-violet-400 */
             font-style: italic;
             padding-left: 2rem;
             white-space: pre;
         }
+
         .control-panel input[type=number] {
-            background-color: #374151; /* bg-gray-700 */
-            border: 1px solid #4b5563; /* border-gray-600 */
+            background-color: #374151;
+            /* bg-gray-700 */
+            border: 1px solid #4b5563;
+            /* border-gray-600 */
             color: white;
             border-radius: 0.375rem;
             padding: 0.5rem;
             width: 60px;
             text-align: center;
         }
+
         .btn {
-            background-color: #2563eb; /* bg-blue-600 */
+            background: linear-gradient(to right, #1d4ed8, #2563eb);
             color: white;
             font-weight: 500;
             padding: 0.5rem 1rem;
             border-radius: 0.375rem;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
             border: none;
             cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
+
         .btn:hover {
-            background-color: #1d4ed8; /* bg-blue-700 */
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
         }
+
         .btn:disabled {
-            background-color: #4b5563; /* bg-gray-600 */
+            background: #4b5563;
             cursor: not-allowed;
+            transform: translateY(0);
+            box-shadow: none;
         }
-        .btn-green { background-color: #16a34a; } /* bg-green-600 */
-        .btn-green:hover { background-color: #15803d; } /* bg-green-700 */
-        .btn-red { background-color: #dc2626; } /* bg-red-600 */
-        .btn-red:hover { background-color: #b91c1c; } /* bg-red-700 */
+
+        .btn-green {
+            background: linear-gradient(to right, #15803d, #16a34a);
+        }
+
+        .btn-red {
+            background: linear-gradient(to right, #b91c1c, #dc2626);
+        }
+
+        kbd {
+            font-family: 'Inter', sans-serif;
+        }
     </style>
 </head>
+
 <body class="p-4 md:p-6">
 
     <div class="max-w-screen-2xl mx-auto">
         <header class="text-center mb-6">
-            <h1 class="text-3xl font-bold text-white">Interactive Triton Matmul Kernel Visualization</h1>
-            <p class="text-gray-400 mt-2">Step through or autoplay the `matmul_kernel` to understand its inner workings.</p>
+            <h1 class="text-4xl font-bold main-header">Interactive Triton Matmul Kernel Visualization</h1>
+            <p class="text-gray-400 mt-2">Step through the Triton matmul_kernel to understand its inner workings.</p>
+            <div
+                class="mt-4 text-gray-400 text-sm flex flex-col sm:flex-row justify-center items-center gap-x-6 gap-y-2">
+                <a href="https://triton-lang.org/main/getting-started/tutorials/03-matrix-multiplication.html"
+                    target="_blank" rel="noopener noreferrer"
+                    class="text-blue-400 underline hover:text-blue-300 transition-colors">
+                    Based on the Triton Matmul Tutorial
+                </a>
+                <div class="flex items-center gap-4">
+                    <span>Controls:</span>
+                    <div class="flex items-center gap-1">
+                        <kbd
+                            class="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Space</kbd>
+                        <span>Play/Pause</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <kbd
+                            class="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">→
+                        </kbd>
+                        <span>Next Step</span>
+                    </div>
+                </div>
+            </div>
+            <p class="mt-4 text-gray-500 text-xs">Created with ❤️ by xxx</p>
         </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 lg:gap-8">
-            <!-- Left Column: Controls & Code -->
-            <div>
-                <!-- Controls -->
-                <div class="control-panel bg-gray-800 p-4 rounded-lg mb-6">
-                    <div class="flex flex-wrap items-center justify-center gap-4">
-                        <div class="flex items-center gap-2">
-                            <label>M:</label><input type="number" id="M" value="16">
-                            <label>N:</label><input type="number" id="N" value="16">
-                            <label>K:</label><input type="number" id="K" value="16">
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <label>BLOCK_M:</label><input type="number" id="BLOCK_SIZE_M" value="16">
-                            <label>BLOCK_N:</label><input type="number" id="BLOCK_SIZE_N" value="16">
-                            <label>BLOCK_K:</label><input type="number" id="BLOCK_SIZE_K" value="16">
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <label>GROUP_M:</label><input type="number" id="GROUP_SIZE_M" value="8">
-                        </div>
-                        <button id="resetBtn" class="btn">Reset</button>
-                    </div>
-                </div>
+        <!-- Main 4-Quadrant Layout -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                <!-- Simulation State & Controls -->
-                <div class="bg-gray-800 p-4 rounded-lg mb-6">
-                    <h2 class="text-lg font-semibold mb-3 text-center">Simulation Controls</h2>
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <button id="stepBtn" class="btn w-full">Next Step</button>
-                        <button id="autoplayBtn" class="btn btn-green w-full">Autoplay</button>
-                        <button id="pauseBtn" class="btn btn-red w-full hidden">Pause</button>
+            <!-- Top-Left: Matrix/Block Dimensions -->
+            <div class="control-panel panel p-4">
+                <div class="flex flex-wrap items-center justify-center gap-4 h-full">
+                    <div class="flex items-center gap-2">
+                        <label>M:</label><input type="number" id="M" value="12">
+                        <label>N:</label><input type="number" id="N" value="8">
+                        <label>K:</label><input type="number" id="K" value="6">
                     </div>
-                    <div class="flex items-center gap-3">
-                        <label for="speedSlider" class="text-sm">Speed:</label>
-                        <input type="range" id="speedSlider" min="50" max="1000" value="800" class="w-full">
+                    <div class="flex items-center gap-2">
+                        <label>BLOCK_M:</label><input type="number" id="BLOCK_SIZE_M" value="4">
+                        <label>BLOCK_N:</label><input type="number" id="BLOCK_SIZE_N" value="4">
+                        <label>BLOCK_K:</label><input type="number" id="BLOCK_SIZE_K" value="4">
                     </div>
-                    <div id="info" class="mt-4 text-sm text-gray-300 space-y-2"></div>
-                    <div id="variable-display" class="mt-4 text-sm text-gray-300 space-y-1"></div>
-                </div>
-
-                <!-- Code -->
-                <div class="bg-gray-800 p-4 rounded-lg">
-                    <h2 class="text-lg font-semibold mb-2">Kernel Code</h2>
-                    <div class="code-block" id="code-display"></div>
+                    <div class="flex items-center gap-2">
+                        <label>GROUP_M:</label><input type="number" id="GROUP_SIZE_M" value="2">
+                    </div>
+                    <button id="resetBtn" class="btn">Reset</button>
                 </div>
             </div>
 
-            <!-- Right Column: Matrices -->
-            <div class="mt-8 lg:mt-0">
-                <div class="grid grid-cols-1 gap-8">
-                     <div class="text-center">
-                        <h2 class="text-xl font-bold mb-2">Matrix A (M x K)</h2>
-                        <div id="matrixA" class="matrix-grid mx-auto"></div>
-                    </div>
-                    <div class="text-center">
+            <!-- Top-Right: Simulation Controls -->
+            <div class="panel p-4">
+                <h2 class="text-lg font-semibold mb-3 text-center">Simulation Controls</h2>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <button id="stepBtn" class="btn w-full">Next Step</button>
+                    <button id="autoplayBtn" class="btn btn-green w-full">Autoplay</button>
+                    <button id="pauseBtn" class="btn btn-red w-full hidden">Pause</button>
+                </div>
+                <div class="flex items-center gap-3">
+                    <label for="speedSlider" class="text-sm">Speed:</label>
+                    <input type="range" id="speedSlider" min="50" max="1000" value="800" class="w-full">
+                </div>
+                <div id="info" class="mt-4 text-sm text-gray-300 space-y-2"></div>
+            </div>
+
+            <!-- Bottom-Left: Kernel Code -->
+            <div class="panel p-4 h-full">
+                <h2 class="text-lg font-semibold mb-2">Kernel Code</h2>
+                <div class="code-block" id="code-display"></div>
+            </div>
+
+            <!-- Bottom-Right: Matrices -->
+            <div id="matrix-quadrant" class="panel flex justify-center items-center h-full p-4">
+                <div class="grid grid-cols-[auto,auto] gap-4">
+                    <!-- Matrix B container -->
+                    <div class="text-center col-start-2">
                         <h2 class="text-xl font-bold mb-2">Matrix B (K x N)</h2>
-                        <div id="matrixB" class="matrix-grid mx-auto"></div>
+                        <div id="matrixB" class="matrix-grid"></div>
                     </div>
-                    <div class="text-center">
+                    <!-- Matrix A container -->
+                    <div class="text-center self-center row-start-2">
+                        <h2 class="text-xl font-bold mb-2">Matrix A (M x K)</h2>
+                        <div id="matrixA" class="matrix-grid"></div>
+                    </div>
+                    <!-- Matrix C container -->
+                    <div class="text-center col-start-2 row-start-2">
                         <h2 class="text-xl font-bold mb-2">Matrix C (M x N)</h2>
-                        <div id="matrixC" class="matrix-grid mx-auto"></div>
+                        <div id="matrixC" class="matrix-grid"></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Global Tooltip Element -->
+    <div id="global-tooltip"></div>
 
     <script>
         // --- DOM Elements ---
@@ -185,8 +347,8 @@
         const matrixCContainer = document.getElementById('matrixC');
 
         const infoDiv = document.getElementById('info');
-        const variableDisplayDiv = document.getElementById('variable-display');
         const codeDisplay = document.getElementById('code-display');
+        const globalTooltip = document.getElementById('global-tooltip');
 
         // --- Simulation State ---
         let M, N, K, BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K, GROUP_SIZE_M;
@@ -194,22 +356,166 @@
         let num_pid_m, num_pid_n;
         let grid_size;
         let accumulator;
-        let C_matrix_values;
+        let A_matrix_values, B_matrix_values, C_matrix_values;
         let isAutoplaying = false;
         let autoplayIntervalId = null;
         let autoplaySpeed = 200; // default speed (1000 - 800)
         let lineValues = {};
+        let prngSeed; // Seed for pseudo-random number generator
+        let hoveredTooltipTarget = null; // Track currently hovered element for live updates
+
+        function seededRandom() {
+            // Simple LCG to make random numbers predictable for a given seed
+            prngSeed = (prngSeed * 1103515245 + 12345) % 2147483648;
+            return prngSeed / 2147483648;
+        }
 
         const kernelCode = [
-            `pid = tl.program_id(axis=0)`, `num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)`, `num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)`, `num_pid_in_group = GROUP_SIZE_M * num_pid_n`, `group_id = pid // num_pid_in_group`, `first_pid_m = group_id * GROUP_SIZE_M`, `group_size_m = min(num_pid_m - first_pid_m, GROUP_SIZE_M)`, `pid_m = first_pid_m + ((pid % num_pid_in_group) % group_size_m)`, `pid_n = (pid % num_pid_in_group) // group_size_m`, `offs_am = ...`, `offs_bn = ...`, `offs_k = ...`, `a_ptrs = ...`, `b_ptrs = ...`, `accumulator = tl.zeros(...)`, `for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)):`, `  a = tl.load(a_ptrs, mask=...)`, `  b = tl.load(b_ptrs, mask=...)`, `  accumulator = tl.dot(a, b, accumulator)`, `  a_ptrs += ...`, `  b_ptrs += ...`, `c = accumulator.to(tl.float16)`, `offs_cm = ...`, `offs_cn = ...`, `c_ptrs = ...`, `tl.store(c_ptrs, c, mask=...)`, `--- End of Program ---`
+            `// 1. Get program IDs & grid dimensions`,
+            `pid = tl.program_id(axis=0)`,
+            `num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)`,
+            `num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)`,
+            ``,
+            `// 2. Remap IDs for grouped ordering (L2 cache optimization)`,
+            `num_pid_in_group = GROUP_SIZE_M * num_pid_n`,
+            `group_id = pid // num_pid_in_group`,
+            `first_pid_m = group_id * GROUP_SIZE_M`,
+            `group_size_m = min(num_pid_m - first_pid_m, GROUP_SIZE_M)`,
+            `pid_m = first_pid_m + ((pid % num_pid_in_group) % group_size_m)`,
+            `pid_n = (pid % num_pid_in_group) // group_size_m`,
+            ``,
+            `// 3. Create pointers for the first blocks of A and B`,
+            `offs_am = tl.arange(0, BLOCK_SIZE_M)`,
+            `offs_bn = tl.arange(0, BLOCK_SIZE_N)`,
+            `offs_k = tl.arange(0, BLOCK_SIZE_K)`,
+            `a_ptrs = a_ptr + (offs_am[:, None] * stride_am + offs_k[None, :] * stride_ak)`,
+            `b_ptrs = b_ptr + (offs_k[:, None] * stride_bk + offs_bn[None, :] * stride_bn)`,
+            ``,
+            `// 4. Initialize accumulator with zeros`,
+            `accumulator = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)`,
+            ``,
+            `// 5. Loop over K-dimension blocks`,
+            `for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)):`,
+            `  // Load blocks from memory`,
+            `  a = tl.load(a_ptrs, mask=k_remaining > 0, other=0.0)`,
+            `  b = tl.load(b_ptrs, mask=k_remaining > 0, other=0.0)`,
+            `  // Perform matrix multiplication`,
+            `  accumulator += tl.dot(a, b)`,
+            `  // Advance pointers to the next K-block`,
+            `  a_ptrs += BLOCK_SIZE_K * stride_ak`,
+            `  b_ptrs += BLOCK_SIZE_K * stride_bk`,
+            ``,
+            `// 6. Store the result block to C matrix`,
+            `c = accumulator.to(tl.float16)`,
+            `offs_cm = pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M)`,
+            `offs_cn = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)`,
+            `c_ptrs = ...`,
+            `tl.store(c_ptrs, c, mask=...)`,
+            ``,
+            `--- End of Program ---`
         ];
+
+        // --- Define key line numbers for logic ---
+        const LINE_START_POINTERS = 14;
+        const LINE_START_ACCUMULATOR = 21;
+        const LINE_START_LOOP = 24;
+        const LINE_DOT_PRODUCT = 29;
+        const LINE_END_LOOP_BLOCK = 32;
+        const LINE_START_STORE = 35;
+        const LINE_END_STORE = 40;
+        const LINE_END_PROGRAM = 42;
+
         const lineVariableMap = {
-            0: 'pid', 1: 'num_pid_m', 2: 'num_pid_n', 3: 'num_pid_in_group', 4: 'group_id', 5: 'first_pid_m', 6: 'group_size_m', 7: 'pid_m', 8: 'pid_n'
+            1: 'pid', 2: 'num_pid_m', 3: 'num_pid_n', 6: 'num_pid_in_group', 7: 'group_id', 8: 'first_pid_m', 9: 'group_size_m', 10: 'pid_m', 11: 'pid_n'
+        };
+
+        function generateMatrixHTML(data, title) {
+            let html = `${title}<br><table class="tooltip-matrix">`;
+            for (const row of data) {
+                html += '<tr>';
+                for (const cell of row) {
+                    html += `<td>${cell !== undefined ? cell : ''}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</table>';
+            return html;
+        }
+
+        const lineTooltipCalculations = {
+            14: (state) => `Offsets for rows in A block: [${Array.from({ length: state.BLOCK_SIZE_M }, (_, i) => i).join(', ')}]`,
+            15: (state) => `Offsets for cols in B block: [${Array.from({ length: state.BLOCK_SIZE_N }, (_, i) => i).join(', ')}]`,
+            16: (state) => `Offsets for K dimension: [${Array.from({ length: state.BLOCK_SIZE_K }, (_, i) => i).join(', ')}]`,
+            17: (state) => { // a_ptrs
+                const { pid_m, k_loop_iter, BLOCK_SIZE_M, BLOCK_SIZE_K, M, K } = state;
+                const start_row = pid_m * BLOCK_SIZE_M;
+                const start_col = k_loop_iter * BLOCK_SIZE_K;
+                const index_block = [];
+                for (let i = 0; i < BLOCK_SIZE_M; i++) {
+                    const row = [];
+                    for (let j = 0; j < BLOCK_SIZE_K; j++) {
+                        const r = start_row + i;
+                        const c = start_col + j;
+                        row.push(r < M && c < K ? (r * K + c) : undefined);
+                    }
+                    index_block.push(row);
+                }
+                return generateMatrixHTML(index_block, 'Pointer Indices for A:');
+            },
+            18: (state) => { // b_ptrs
+                const { pid_n, k_loop_iter, BLOCK_SIZE_K, BLOCK_SIZE_N, K, N } = state;
+                const start_row = k_loop_iter * BLOCK_SIZE_K;
+                const start_col = pid_n * BLOCK_SIZE_N;
+                const index_block = [];
+                for (let i = 0; i < BLOCK_SIZE_K; i++) {
+                    const row = [];
+                    for (let j = 0; j < BLOCK_SIZE_N; j++) {
+                        const r = start_row + i;
+                        const c = start_col + j;
+                        row.push(r < K && c < N ? (r * N + c) : undefined);
+                    }
+                    index_block.push(row);
+                }
+                return generateMatrixHTML(index_block, 'Pointer Indices for B:');
+            },
+            26: (state) => { // a = tl.load(...)
+                const { pid_m, k_loop_iter, BLOCK_SIZE_M, BLOCK_SIZE_K, M, K, A_matrix_values: a_vals } = state;
+                const start_row = pid_m * BLOCK_SIZE_M;
+                const start_col = k_loop_iter * BLOCK_SIZE_K;
+                const block = [];
+                for (let i = 0; i < BLOCK_SIZE_M; i++) {
+                    const row = [];
+                    for (let j = 0; j < BLOCK_SIZE_K; j++) {
+                        const r = start_row + i;
+                        const c = start_col + j;
+                        row.push(r < M && c < K ? a_vals[r][c] : undefined);
+                    }
+                    block.push(row);
+                }
+                return generateMatrixHTML(block, 'Loading this block from A:');
+            },
+            27: (state) => { // b = tl.load(...)
+                const { pid_n, k_loop_iter, BLOCK_SIZE_K, BLOCK_SIZE_N, K, N, B_matrix_values: b_vals } = state;
+                const start_row = k_loop_iter * BLOCK_SIZE_K;
+                const start_col = pid_n * BLOCK_SIZE_N;
+                const block = [];
+                for (let i = 0; i < BLOCK_SIZE_K; i++) {
+                    const row = [];
+                    for (let j = 0; j < BLOCK_SIZE_N; j++) {
+                        const r = start_row + i;
+                        const c = start_col + j;
+                        row.push(r < K && c < N ? b_vals[r][c] : undefined);
+                    }
+                    block.push(row);
+                }
+                return generateMatrixHTML(block, 'Loading this block from B:');
+            }
         };
         let current_line = 0;
 
         function init() {
             pauseAutoplay();
+
             M = parseInt(M_in.value);
             N = parseInt(N_in.value);
             K = parseInt(K_in.value);
@@ -217,22 +523,27 @@
             BLOCK_SIZE_N = parseInt(BLOCK_SIZE_N_in.value);
             BLOCK_SIZE_K = parseInt(BLOCK_SIZE_K_in.value);
             GROUP_SIZE_M = parseInt(GROUP_SIZE_M_in.value);
-            
+
+            // Set a seed based on dimensions to make the numbers consistent on reset
+            prngSeed = M * 31 + N * 17 + K * 7;
+
             pid = 0;
             k_loop_iter = 0;
             current_line = 0;
             lineValues = {};
-            
+
             num_pid_m = Math.ceil(M / BLOCK_SIZE_M);
             num_pid_n = Math.ceil(N / BLOCK_SIZE_N);
             grid_size = num_pid_m * num_pid_n;
-            
+
+            A_matrix_values = Array(M).fill(0).map(() => Array(K).fill(0).map(() => Math.floor(seededRandom() * 3) + 1));
+            B_matrix_values = Array(K).fill(0).map(() => Array(N).fill(0).map(() => Math.floor(seededRandom() * 3) + 1));
             C_matrix_values = Array(M).fill(0).map(() => Array(N).fill(0));
 
             createMatrix('A', M, K, matrixAContainer);
             createMatrix('B', K, N, matrixBContainer);
             createMatrix('C', M, N, matrixCContainer);
-            
+
             updateCodeDisplay();
             updateInfo();
             clearHighlights();
@@ -247,44 +558,58 @@
                     const cell = document.createElement('div');
                     cell.classList.add('matrix-cell');
                     cell.id = `${name}-${i}-${j}`;
+
+                    if (name === 'A') {
+                        cell.innerText = A_matrix_values[i][j];
+                    } else if (name === 'B') {
+                        cell.innerText = B_matrix_values[i][j];
+                    }
                     container.appendChild(cell);
                 }
             }
         }
-        
+
         function updateCodeDisplay(values = {}) {
             codeDisplay.innerHTML = kernelCode.map((line, index) => {
                 const isActive = index === current_line;
                 const varName = lineVariableMap[index];
                 let valueToShow = '';
                 if (varName && (values[varName] !== undefined || lineValues[varName] !== undefined)) {
-                     // Update stored value if new one is available
+                    // Update stored value if new one is available
                     if (values[varName] !== undefined) lineValues[varName] = values[varName];
                     // Show value if the line has been executed or is being executed
                     if (index <= current_line) {
-                       valueToShow = `// ${lineValues[varName]}`;
+                        valueToShow = `// ${lineValues[varName]}`;
                     }
                 }
 
-                return `<div class="code-line ${isActive ? 'active-line' : ''}">` +
-                       `<span>${line.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>` +
-                       `<span class="code-value">${valueToShow}</span>` +
-                       `</div>`;
+                const lineSpan = `<span>${line.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>`;
+                let finalLineHTML = lineSpan;
+
+                const tooltipFunc = lineTooltipCalculations[index];
+                if (tooltipFunc) {
+                    finalLineHTML = `<span class="has-tooltip" data-line-index="${index}">${lineSpan}</span>`;
+                }
+
+                const isComment = line.trim().startsWith('//');
+                const lineClass = isComment ? 'code-comment' : '';
+
+                return `<div class="code-line ${isActive ? 'active-line' : ''} ${lineClass}">` +
+                    `${finalLineHTML}` +
+                    `<span class="code-value">${valueToShow}</span>` +
+                    `</div>`;
             }).join('');
         }
 
         function step() {
             if (pid >= grid_size) {
                 infoDiv.innerHTML = '<div><strong>Simulation Complete!</strong></div>';
-                variableDisplayDiv.innerHTML = '';
-                current_line = kernelCode.length - 1;
-                updateCodeDisplay(lineValues);
+                current_line = LINE_END_PROGRAM;
+                updateCodeDisplay();
                 pauseAutoplay();
                 stepBtn.disabled = true;
                 return;
             }
-            
-            clearHighlights();
 
             const num_pid_in_group = GROUP_SIZE_M * num_pid_n;
             const group_id = Math.floor(pid / num_pid_in_group);
@@ -292,50 +617,60 @@
             const group_size_m = Math.min(num_pid_m - first_pid_m, GROUP_SIZE_M);
             const pid_m = first_pid_m + ((pid % num_pid_in_group) % group_size_m);
             const pid_n = Math.floor((pid % num_pid_in_group) / group_size_m);
-            
             const currentValues = { pid, num_pid_m, num_pid_n, num_pid_in_group, group_id, first_pid_m, group_size_m, pid_m, pid_n };
 
+            clearHighlights();
             const total_k_loops = Math.ceil(K / BLOCK_SIZE_K);
 
-            if (current_line < 15) {
-                 current_line++;
-            } else if (current_line >= 15 && current_line < 21) {
-                if (k_loop_iter === 0 && current_line === 15) {
-                     accumulator = Array(BLOCK_SIZE_M).fill(0).map(() => Array(BLOCK_SIZE_N).fill(0));
+            if (current_line < LINE_START_LOOP) {
+                current_line++;
+                // Skip over empty spacer lines
+                while (current_line < LINE_START_LOOP && kernelCode[current_line].trim() === '') {
+                    current_line++;
                 }
-                
+            } else if (current_line >= LINE_START_LOOP && current_line <= LINE_END_LOOP_BLOCK) {
+                if (k_loop_iter === 0 && current_line === LINE_START_LOOP) {
+                    accumulator = Array(BLOCK_SIZE_M).fill(0).map(() => Array(BLOCK_SIZE_N).fill(0));
+                }
+
                 highlightBlockA(pid_m, k_loop_iter);
                 highlightBlockB(pid_n, k_loop_iter);
                 highlightBlockC(pid_m, pid_n, true);
 
-                for (let m_inner = 0; m_inner < BLOCK_SIZE_M; m_inner++) {
-                    for (let n_inner = 0; n_inner < BLOCK_SIZE_N; n_inner++) {
-                        let dot_product = 0;
-                        for (let k_inner = 0; k_inner < BLOCK_SIZE_K; k_inner++) {
-                             const m = (pid_m * BLOCK_SIZE_M + m_inner);
-                             const n = (pid_n * BLOCK_SIZE_N + n_inner);
-                             const k = k_loop_iter * BLOCK_SIZE_K + k_inner;
-                             if (m < M && n < N && k < K) {
-                                dot_product += 1; 
-                             }
+                if (current_line === LINE_DOT_PRODUCT) { // This is line `accumulator += tl.dot(a, b)`
+                    for (let m_inner = 0; m_inner < BLOCK_SIZE_M; m_inner++) {
+                        for (let n_inner = 0; n_inner < BLOCK_SIZE_N; n_inner++) {
+                            let dot_product = 0;
+                            for (let k_inner = 0; k_inner < BLOCK_SIZE_K; k_inner++) {
+                                const m = (pid_m * BLOCK_SIZE_M + m_inner);
+                                const n = (pid_n * BLOCK_SIZE_N + n_inner);
+                                const k = k_loop_iter * BLOCK_SIZE_K + k_inner;
+                                if (m < M && n < N && k < K) {
+                                    dot_product += A_matrix_values[m][k] * B_matrix_values[k][n];
+                                }
+                            }
+                            accumulator[m_inner][n_inner] += dot_product;
                         }
-                        accumulator[m_inner][n_inner] += dot_product;
                     }
                 }
-                
+
                 current_line++;
-                if (current_line > 20) {
+                if (current_line > LINE_END_LOOP_BLOCK) {
                     k_loop_iter++;
                     if (k_loop_iter < total_k_loops) {
-                        current_line = 16;
+                        current_line = LINE_START_LOOP + 2; // Start inside the loop at `a = tl.load`
                     } else {
-                        current_line = 21;
+                        current_line = LINE_START_STORE;
                     }
                 }
 
             } else {
-                 current_line++;
-                 if (current_line > 25) {
+                current_line++;
+                // Skip over empty spacer lines
+                while (current_line < LINE_END_STORE && kernelCode[current_line].trim() === '') {
+                    current_line++;
+                }
+                if (current_line > LINE_END_STORE) {
                     for (let m_inner = 0; m_inner < BLOCK_SIZE_M; m_inner++) {
                         for (let n_inner = 0; n_inner < BLOCK_SIZE_N; n_inner++) {
                             const m = pid_m * BLOCK_SIZE_M + m_inner;
@@ -352,11 +687,12 @@
                     k_loop_iter = 0;
                     current_line = 0;
                     lineValues = {}; // Reset for next program
-                 }
+                }
             }
-            
+
             updateCodeDisplay(currentValues);
-            updateInfo({pid_m, pid_n, group_id, k_loop_iter, total_k_loops, ...currentValues});
+            updateInfo({ pid_m, pid_n, group_id, k_loop_iter, total_k_loops, ...currentValues });
+            updateVisibleTooltip(); // Live-update the tooltip if it's visible
         }
 
         function clearHighlights() {
@@ -401,24 +737,19 @@
                     const row = start_row + i;
                     const col = start_col + j;
                     if (row < M && col < N) {
-                         const cell = document.getElementById(`C-${row}-${col}`);
-                         if(is_dest) cell.classList.add('highlight-c-dest');
-                         else cell.classList.add('highlight-c');
+                        const cell = document.getElementById(`C-${row}-${col}`);
+                        if (is_dest) cell.classList.add('highlight-c-dest');
+                        else cell.classList.add('highlight-c');
                     }
                 }
             }
         }
-        
+
         function updateInfo(data = {}) {
             const { pid_m, pid_n, group_id, k_loop_iter, total_k_loops, num_pid_in_group, first_pid_m, group_size_m } = data;
-            
+
             infoDiv.innerHTML = `<div><strong>Grid Size:</strong> ${grid_size} programs</div><div><strong>Current Program ID (pid):</strong> ${pid}</div><hr class="border-gray-600 my-1">${pid_m !== undefined ? `<div><strong>K-Loop Iteration:</strong> ${k_loop_iter || 0} / ${total_k_loops || Math.ceil(K / BLOCK_SIZE_K)}</div>` : '<div>Press "Next Step" or "Autoplay".</div>'}`;
 
-            if (pid_m !== undefined) {
-                variableDisplayDiv.innerHTML = `<h3 class="font-semibold text-base mt-3 mb-1 text-gray-100">Calculated Variables</h3><div><strong>num_pid_m:</strong> ${num_pid_m}</div><div><strong>num_pid_n:</strong> ${num_pid_n}</div><div><strong>num_pid_in_group:</strong> ${num_pid_in_group}</div><div><strong>group_id:</strong> ${group_id}</div><div><strong>first_pid_m:</strong> ${first_pid_m}</div><div><strong>group_size_m:</strong> ${group_size_m}</div><hr class="border-gray-600 my-1"><div class="font-bold text-white"><strong>pid_m (row block):</strong> ${pid_m}</div><div class="font-bold text-white"><strong>pid_n (col block):</strong> ${pid_n}</div>`;
-            } else {
-                variableDisplayDiv.innerHTML = '';
-            }
         }
 
         function startAutoplay() {
@@ -447,6 +778,45 @@
             }
         }
 
+        // --- New function to update tooltip content live ---
+        function updateVisibleTooltip() {
+            if (!hoveredTooltipTarget) return;
+
+            const lineIndex = parseInt(hoveredTooltipTarget.dataset.lineIndex, 10);
+            const tooltipFunc = lineTooltipCalculations[lineIndex];
+
+            if (tooltipFunc && pid < grid_size) {
+                // This logic is duplicated from the mouseover event to get the current state
+                const num_pid_in_group = GROUP_SIZE_M * num_pid_n;
+                const group_id = Math.floor(pid / num_pid_in_group);
+                const first_pid_m = group_id * GROUP_SIZE_M;
+                const group_size_m = Math.min(num_pid_m - first_pid_m, GROUP_SIZE_M);
+                const pid_m = first_pid_m + ((pid % num_pid_in_group) % group_size_m);
+                const pid_n = Math.floor((pid % num_pid_in_group) / group_size_m);
+
+                const state = { pid_m, pid_n, k_loop_iter, M, N, K, BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K, A_matrix_values, B_matrix_values };
+                globalTooltip.innerHTML = tooltipFunc(state);
+
+                // We also need to reposition it, as content changes can affect size
+                const rect = hoveredTooltipTarget.getBoundingClientRect();
+                const tooltipRect = globalTooltip.getBoundingClientRect();
+
+                // Keep it from going off-screen
+                let top = rect.top - tooltipRect.height - 8;
+                let left = rect.left;
+                if (top < 0) {
+                    top = rect.bottom + 8;
+                }
+                if (left + tooltipRect.width > window.innerWidth) {
+                    left = window.innerWidth - tooltipRect.width - 8;
+                }
+
+                globalTooltip.style.left = `${left}px`;
+                globalTooltip.style.top = `${top}px`;
+            }
+        }
+
+
         // --- Event Listeners ---
         stepBtn.addEventListener('click', step);
         resetBtn.addEventListener('click', init);
@@ -454,8 +824,48 @@
         pauseBtn.addEventListener('click', pauseAutoplay);
         speedSlider.addEventListener('input', handleSpeedChange);
 
+        codeDisplay.addEventListener('mouseover', (e) => {
+            const target = e.target.closest('.has-tooltip');
+            if (!target) return;
+
+            hoveredTooltipTarget = target; // Set the currently hovered element
+            updateVisibleTooltip(); // Show and position the tooltip immediately
+            globalTooltip.classList.add('visible');
+        });
+
+        codeDisplay.addEventListener('mouseout', (e) => {
+            const target = e.target.closest('.has-tooltip');
+            if (target) {
+                hoveredTooltipTarget = null; // Clear the hovered element
+                globalTooltip.classList.remove('visible');
+            }
+        });
+
+        // --- NEW: Keyboard Support ---
+        document.addEventListener('keydown', (e) => {
+            // Use Spacebar to toggle play/pause
+            if (e.code === 'Space') {
+                e.preventDefault(); // Prevent default browser action (like scrolling)
+                if (isAutoplaying) {
+                    pauseAutoplay();
+                } else {
+                    startAutoplay();
+                }
+            }
+            // Use Right Arrow to step forward
+            else if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                // Only allow stepping if not currently autoplaying and the button is enabled
+                if (!isAutoplaying && !stepBtn.disabled) {
+                    step();
+                }
+            }
+        });
+
+
         // --- Initial Load ---
         init();
     </script>
 </body>
+
 </html>
