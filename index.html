@@ -19,14 +19,11 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #1a202c;
-            /* Changed from dark blue to dark slate */
             color: #e5e7eb;
-            /* text-gray-200 */
         }
 
         .panel {
             background: rgba(45, 55, 72, 0.6);
-            /* Adjusted for new background */
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 0.75rem;
@@ -49,7 +46,6 @@
             align-items: center;
             justify-content: center;
             border: 1px solid #374151;
-            /* border-gray-700 */
             border-radius: 4px;
             transition: all 0.2s ease-in-out;
             width: 28px;
@@ -85,25 +81,20 @@
             background-color: #4b5563;
         }
 
-        /* bg-gray-600 */
-
         .code-block {
             font-family: 'Fira Code', monospace;
             background-color: rgba(26, 32, 44, 0.8);
-            /* Adjusted for new background */
             padding: 1rem;
             border-radius: 0.5rem;
             overflow-x: auto;
             font-size: 0.875rem;
             line-height: 1.6;
             color: #d1d5db;
-            /* text-gray-300 */
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .code-comment {
             color: #6b7280;
-            /* gray-500 */
             font-style: italic;
         }
 
@@ -116,7 +107,6 @@
 
         .code-line.active-line {
             background-color: rgba(55, 65, 81, 0.7);
-            /* bg-gray-700 */
         }
 
         .has-tooltip {
@@ -125,7 +115,6 @@
             text-decoration: underline;
             text-decoration-style: dotted;
             text-decoration-color: #6b7280;
-            /* gray-500 */
         }
 
         #global-tooltip {
@@ -133,7 +122,6 @@
             visibility: hidden;
             width: max-content;
             background: rgba(26, 32, 44, 0.8);
-            /* Adjusted for new background */
             backdrop-filter: blur(5px);
             color: #fff;
             text-align: left;
@@ -169,7 +157,6 @@
 
         .code-value {
             color: #a78bfa;
-            /* text-violet-400 */
             font-style: italic;
             padding-left: 2rem;
             white-space: pre;
@@ -177,9 +164,7 @@
 
         .control-panel input[type=number] {
             background-color: #374151;
-            /* bg-gray-700 */
             border: 1px solid #4b5563;
-            /* border-gray-600 */
             color: white;
             border-radius: 0.375rem;
             padding: 0.5rem;
@@ -222,6 +207,63 @@
         kbd {
             font-family: 'Inter', sans-serif;
         }
+
+        /* Styles for C Block View */
+        .c-block-cell {
+            border-width: 2px;
+            font-weight: bold;
+        }
+
+        .c-block-color-0 {
+            border-color: #f59e0b;
+        }
+
+        /* amber-500 */
+        .c-block-color-1 {
+            border-color: #84cc16;
+        }
+
+        /* lime-500 */
+        .c-block-color-2 {
+            border-color: #22d3ee;
+        }
+
+        /* cyan-400 */
+        .c-block-color-3 {
+            border-color: #a78bfa;
+        }
+
+        /* violet-400 */
+        .c-block-color-4 {
+            border-color: #f472b6;
+        }
+
+        /* pink-400 */
+        .c-block-color-5 {
+            border-color: #34d399;
+        }
+
+        /* emerald-400 */
+        .c-block-color-6 {
+            border-color: #fbbf24;
+        }
+
+        /* amber-400 */
+        .c-block-color-7 {
+            border-color: #a3e635;
+        }
+
+        /* lime-400 */
+        .c-block-color-8 {
+            border-color: #67e8f9;
+        }
+
+        /* cyan-300 */
+        .c-block-color-9 {
+            border-color: #c084fc;
+        }
+
+        /* purple-400 */
     </style>
 </head>
 
@@ -247,8 +289,7 @@
                     </div>
                     <div class="flex items-center gap-1">
                         <kbd
-                            class="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">→
-                        </kbd>
+                            class="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">→</kbd>
                         <span>Next Step</span>
                     </div>
                 </div>
@@ -282,10 +323,14 @@
             <!-- Top-Right: Simulation Controls -->
             <div class="panel p-4">
                 <h2 class="text-lg font-semibold mb-3 text-center">Simulation Controls</h2>
-                <div class="grid grid-cols-2 gap-4 mb-4">
+                <div class="grid grid-cols-2 gap-4 mb-2">
                     <button id="stepBtn" class="btn w-full">Next Step</button>
                     <button id="autoplayBtn" class="btn btn-green w-full">Autoplay</button>
                     <button id="pauseBtn" class="btn btn-red w-full hidden">Pause</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <button id="showBlocksBtn" class="btn w-full text-sm py-2">Show C Blocks</button>
+                    <button id="showIndicesBtn" class="btn w-full text-sm py-2">Show A/B Indices</button>
                 </div>
                 <div class="flex items-center gap-3">
                     <label for="speedSlider" class="text-sm">Speed:</label>
@@ -341,6 +386,8 @@
         const autoplayBtn = document.getElementById('autoplayBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const speedSlider = document.getElementById('speedSlider');
+        const showBlocksBtn = document.getElementById('showBlocksBtn');
+        const showIndicesBtn = document.getElementById('showIndicesBtn');
 
         const matrixAContainer = document.getElementById('matrixA');
         const matrixBContainer = document.getElementById('matrixB');
@@ -351,7 +398,7 @@
         const globalTooltip = document.getElementById('global-tooltip');
 
         // --- Simulation State ---
-        let M, N, K, BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K, GROUP_SIZE_M;
+        let sim_M, sim_N, sim_K, sim_BLOCK_SIZE_M, sim_BLOCK_SIZE_N, sim_BLOCK_SIZE_K, sim_GROUP_SIZE_M;
         let pid, k_loop_iter;
         let num_pid_m, num_pid_n;
         let grid_size;
@@ -363,9 +410,10 @@
         let lineValues = {};
         let prngSeed; // Seed for pseudo-random number generator
         let hoveredTooltipTarget = null; // Track currently hovered element for live updates
+        let isCBlockViewActive = false;
+        let isIndexViewActive = false;
 
         function seededRandom() {
-            // Simple LCG to make random numbers predictable for a given seed
             prngSeed = (prngSeed * 1103515245 + 12345) % 2147483648;
             return prngSeed / 2147483648;
         }
@@ -416,8 +464,6 @@
         ];
 
         // --- Define key line numbers for logic ---
-        const LINE_START_POINTERS = 14;
-        const LINE_START_ACCUMULATOR = 21;
         const LINE_START_LOOP = 24;
         const LINE_DOT_PRODUCT = 29;
         const LINE_END_LOOP_BLOCK = 32;
@@ -514,35 +560,36 @@
         let current_line = 0;
 
         function init() {
+            hideCBlocks();
+            hideABIndices();
             pauseAutoplay();
 
-            M = parseInt(M_in.value);
-            N = parseInt(N_in.value);
-            K = parseInt(K_in.value);
-            BLOCK_SIZE_M = parseInt(BLOCK_SIZE_M_in.value);
-            BLOCK_SIZE_N = parseInt(BLOCK_SIZE_N_in.value);
-            BLOCK_SIZE_K = parseInt(BLOCK_SIZE_K_in.value);
-            GROUP_SIZE_M = parseInt(GROUP_SIZE_M_in.value);
+            sim_M = parseInt(M_in.value);
+            sim_N = parseInt(N_in.value);
+            sim_K = parseInt(K_in.value);
+            sim_BLOCK_SIZE_M = parseInt(BLOCK_SIZE_M_in.value);
+            sim_BLOCK_SIZE_N = parseInt(BLOCK_SIZE_N_in.value);
+            sim_BLOCK_SIZE_K = parseInt(BLOCK_SIZE_K_in.value);
+            sim_GROUP_SIZE_M = parseInt(GROUP_SIZE_M_in.value);
 
-            // Set a seed based on dimensions to make the numbers consistent on reset
-            prngSeed = M * 31 + N * 17 + K * 7;
+            prngSeed = sim_M * 31 + sim_N * 17 + sim_K * 7;
 
             pid = 0;
             k_loop_iter = 0;
             current_line = 0;
             lineValues = {};
 
-            num_pid_m = Math.ceil(M / BLOCK_SIZE_M);
-            num_pid_n = Math.ceil(N / BLOCK_SIZE_N);
+            num_pid_m = Math.ceil(sim_M / sim_BLOCK_SIZE_M);
+            num_pid_n = Math.ceil(sim_N / sim_BLOCK_SIZE_N);
             grid_size = num_pid_m * num_pid_n;
 
-            A_matrix_values = Array(M).fill(0).map(() => Array(K).fill(0).map(() => Math.floor(seededRandom() * 3) + 1));
-            B_matrix_values = Array(K).fill(0).map(() => Array(N).fill(0).map(() => Math.floor(seededRandom() * 3) + 1));
-            C_matrix_values = Array(M).fill(0).map(() => Array(N).fill(0));
+            A_matrix_values = Array(sim_M).fill(0).map(() => Array(sim_K).fill(0).map(() => Math.floor(seededRandom() * 3) + 1));
+            B_matrix_values = Array(sim_K).fill(0).map(() => Array(sim_N).fill(0).map(() => Math.floor(seededRandom() * 3) + 1));
+            C_matrix_values = Array(sim_M).fill(0).map(() => Array(sim_N).fill(0));
 
-            createMatrix('A', M, K, matrixAContainer);
-            createMatrix('B', K, N, matrixBContainer);
-            createMatrix('C', M, N, matrixCContainer);
+            createMatrix('A', sim_M, sim_K, matrixAContainer);
+            createMatrix('B', sim_K, sim_N, matrixBContainer);
+            createMatrix('C', sim_M, sim_N, matrixCContainer);
 
             updateCodeDisplay();
             updateInfo();
@@ -575,9 +622,7 @@
                 const varName = lineVariableMap[index];
                 let valueToShow = '';
                 if (varName && (values[varName] !== undefined || lineValues[varName] !== undefined)) {
-                    // Update stored value if new one is available
                     if (values[varName] !== undefined) lineValues[varName] = values[varName];
-                    // Show value if the line has been executed or is being executed
                     if (index <= current_line) {
                         valueToShow = `// ${lineValues[varName]}`;
                     }
@@ -602,6 +647,8 @@
         }
 
         function step() {
+            hideCBlocks();
+            hideABIndices();
             if (pid >= grid_size) {
                 infoDiv.innerHTML = '<div><strong>Simulation Complete!</strong></div>';
                 current_line = LINE_END_PROGRAM;
@@ -611,26 +658,25 @@
                 return;
             }
 
-            const num_pid_in_group = GROUP_SIZE_M * num_pid_n;
+            const num_pid_in_group = sim_GROUP_SIZE_M * num_pid_n;
             const group_id = Math.floor(pid / num_pid_in_group);
-            const first_pid_m = group_id * GROUP_SIZE_M;
-            const group_size_m = Math.min(num_pid_m - first_pid_m, GROUP_SIZE_M);
+            const first_pid_m = group_id * sim_GROUP_SIZE_M;
+            const group_size_m = Math.min(num_pid_m - first_pid_m, sim_GROUP_SIZE_M);
             const pid_m = first_pid_m + ((pid % num_pid_in_group) % group_size_m);
             const pid_n = Math.floor((pid % num_pid_in_group) / group_size_m);
             const currentValues = { pid, num_pid_m, num_pid_n, num_pid_in_group, group_id, first_pid_m, group_size_m, pid_m, pid_n };
 
             clearHighlights();
-            const total_k_loops = Math.ceil(K / BLOCK_SIZE_K);
+            const total_k_loops = Math.ceil(sim_K / sim_BLOCK_SIZE_K);
 
             if (current_line < LINE_START_LOOP) {
                 current_line++;
-                // Skip over empty spacer lines
                 while (current_line < LINE_START_LOOP && kernelCode[current_line].trim() === '') {
                     current_line++;
                 }
             } else if (current_line >= LINE_START_LOOP && current_line <= LINE_END_LOOP_BLOCK) {
                 if (k_loop_iter === 0 && current_line === LINE_START_LOOP) {
-                    accumulator = Array(BLOCK_SIZE_M).fill(0).map(() => Array(BLOCK_SIZE_N).fill(0));
+                    accumulator = Array(sim_BLOCK_SIZE_M).fill(0).map(() => Array(sim_BLOCK_SIZE_N).fill(0));
                 }
 
                 highlightBlockA(pid_m, k_loop_iter);
@@ -638,14 +684,14 @@
                 highlightBlockC(pid_m, pid_n, true);
 
                 if (current_line === LINE_DOT_PRODUCT) { // This is line `accumulator += tl.dot(a, b)`
-                    for (let m_inner = 0; m_inner < BLOCK_SIZE_M; m_inner++) {
-                        for (let n_inner = 0; n_inner < BLOCK_SIZE_N; n_inner++) {
+                    for (let m_inner = 0; m_inner < sim_BLOCK_SIZE_M; m_inner++) {
+                        for (let n_inner = 0; n_inner < sim_BLOCK_SIZE_N; n_inner++) {
                             let dot_product = 0;
-                            for (let k_inner = 0; k_inner < BLOCK_SIZE_K; k_inner++) {
-                                const m = (pid_m * BLOCK_SIZE_M + m_inner);
-                                const n = (pid_n * BLOCK_SIZE_N + n_inner);
-                                const k = k_loop_iter * BLOCK_SIZE_K + k_inner;
-                                if (m < M && n < N && k < K) {
+                            for (let k_inner = 0; k_inner < sim_BLOCK_SIZE_K; k_inner++) {
+                                const m = (pid_m * sim_BLOCK_SIZE_M + m_inner);
+                                const n = (pid_n * sim_BLOCK_SIZE_N + n_inner);
+                                const k = k_loop_iter * sim_BLOCK_SIZE_K + k_inner;
+                                if (m < sim_M && n < sim_N && k < sim_K) {
                                     dot_product += A_matrix_values[m][k] * B_matrix_values[k][n];
                                 }
                             }
@@ -666,16 +712,15 @@
 
             } else {
                 current_line++;
-                // Skip over empty spacer lines
                 while (current_line < LINE_END_STORE && kernelCode[current_line].trim() === '') {
                     current_line++;
                 }
                 if (current_line > LINE_END_STORE) {
-                    for (let m_inner = 0; m_inner < BLOCK_SIZE_M; m_inner++) {
-                        for (let n_inner = 0; n_inner < BLOCK_SIZE_N; n_inner++) {
-                            const m = pid_m * BLOCK_SIZE_M + m_inner;
-                            const n = pid_n * BLOCK_SIZE_N + n_inner;
-                            if (m < M && n < N) {
+                    for (let m_inner = 0; m_inner < sim_BLOCK_SIZE_M; m_inner++) {
+                        for (let n_inner = 0; n_inner < sim_BLOCK_SIZE_N; n_inner++) {
+                            const m = pid_m * sim_BLOCK_SIZE_M + m_inner;
+                            const n = pid_n * sim_BLOCK_SIZE_N + n_inner;
+                            if (m < sim_M && n < sim_N) {
                                 C_matrix_values[m][n] = accumulator[m_inner][n_inner];
                                 const cell = document.getElementById(`C-${m}-${n}`);
                                 cell.innerText = C_matrix_values[m][n];
@@ -702,13 +747,13 @@
         }
 
         function highlightBlockA(pid_m, k_iter) {
-            const start_row = pid_m * BLOCK_SIZE_M;
-            const start_col = k_iter * BLOCK_SIZE_K;
-            for (let i = 0; i < BLOCK_SIZE_M; i++) {
-                for (let j = 0; j < BLOCK_SIZE_K; j++) {
+            const start_row = pid_m * sim_BLOCK_SIZE_M;
+            const start_col = k_iter * sim_BLOCK_SIZE_K;
+            for (let i = 0; i < sim_BLOCK_SIZE_M; i++) {
+                for (let j = 0; j < sim_BLOCK_SIZE_K; j++) {
                     const row = start_row + i;
                     const col = start_col + j;
-                    if (row < M && col < K) {
+                    if (row < sim_M && col < sim_K) {
                         document.getElementById(`A-${row}-${col}`).classList.add('highlight-a');
                     }
                 }
@@ -716,13 +761,13 @@
         }
 
         function highlightBlockB(pid_n, k_iter) {
-            const start_row = k_iter * BLOCK_SIZE_K;
-            const start_col = pid_n * BLOCK_SIZE_N;
-            for (let i = 0; i < BLOCK_SIZE_K; i++) {
-                for (let j = 0; j < BLOCK_SIZE_N; j++) {
+            const start_row = k_iter * sim_BLOCK_SIZE_K;
+            const start_col = pid_n * sim_BLOCK_SIZE_N;
+            for (let i = 0; i < sim_BLOCK_SIZE_K; i++) {
+                for (let j = 0; j < sim_BLOCK_SIZE_N; j++) {
                     const row = start_row + i;
                     const col = start_col + j;
-                    if (row < K && col < N) {
+                    if (row < sim_K && col < sim_N) {
                         document.getElementById(`B-${row}-${col}`).classList.add('highlight-b');
                     }
                 }
@@ -730,13 +775,13 @@
         }
 
         function highlightBlockC(pid_m, pid_n, is_dest = false) {
-            const start_row = pid_m * BLOCK_SIZE_M;
-            const start_col = pid_n * BLOCK_SIZE_N;
-            for (let i = 0; i < BLOCK_SIZE_M; i++) {
-                for (let j = 0; j < BLOCK_SIZE_N; j++) {
+            const start_row = pid_m * sim_BLOCK_SIZE_M;
+            const start_col = pid_n * sim_BLOCK_SIZE_N;
+            for (let i = 0; i < sim_BLOCK_SIZE_M; i++) {
+                for (let j = 0; j < sim_BLOCK_SIZE_N; j++) {
                     const row = start_row + i;
                     const col = start_col + j;
-                    if (row < M && col < N) {
+                    if (row < sim_M && col < sim_N) {
                         const cell = document.getElementById(`C-${row}-${col}`);
                         if (is_dest) cell.classList.add('highlight-c-dest');
                         else cell.classList.add('highlight-c');
@@ -746,10 +791,8 @@
         }
 
         function updateInfo(data = {}) {
-            const { pid_m, pid_n, group_id, k_loop_iter, total_k_loops, num_pid_in_group, first_pid_m, group_size_m } = data;
-
-            infoDiv.innerHTML = `<div><strong>Grid Size:</strong> ${grid_size} programs</div><div><strong>Current Program ID (pid):</strong> ${pid}</div><hr class="border-gray-600 my-1">${pid_m !== undefined ? `<div><strong>K-Loop Iteration:</strong> ${k_loop_iter || 0} / ${total_k_loops || Math.ceil(K / BLOCK_SIZE_K)}</div>` : '<div>Press "Next Step" or "Autoplay".</div>'}`;
-
+            const { pid_m, pid_n, k_loop_iter, total_k_loops } = data;
+            infoDiv.innerHTML = `<div><strong>Grid Size:</strong> ${grid_size} programs</div><div><strong>Current Program ID (pid):</strong> ${pid}</div><hr class="border-gray-600 my-1">${pid_m !== undefined ? `<div><strong>K-Loop Iteration:</strong> ${k_loop_iter || 0} / ${total_k_loops || Math.ceil(sim_K / sim_BLOCK_SIZE_K)}</div>` : '<div>Press "Next Step" or "Autoplay".</div>'}`;
         }
 
         function startAutoplay() {
@@ -757,7 +800,6 @@
             autoplayBtn.classList.add('hidden');
             pauseBtn.classList.remove('hidden');
             stepBtn.disabled = true;
-
             autoplayIntervalId = setInterval(step, autoplaySpeed);
         }
 
@@ -778,7 +820,117 @@
             }
         }
 
-        // --- New function to update tooltip content live ---
+        function showCBlocks() {
+            isCBlockViewActive = true;
+            showBlocksBtn.innerText = 'Hide C Blocks';
+            pauseAutoplay();
+            hideABIndices();
+            clearHighlights();
+
+            for (let m = 0; m < sim_M; m++) {
+                for (let n = 0; n < sim_N; n++) {
+                    document.getElementById(`C-${m}-${n}`).innerText = '';
+                }
+            }
+
+            for (let current_pid = 0; current_pid < grid_size; current_pid++) {
+                const num_pid_in_group = sim_GROUP_SIZE_M * num_pid_n;
+                const group_id = Math.floor(current_pid / num_pid_in_group);
+                const first_pid_m = group_id * sim_GROUP_SIZE_M;
+                const group_size_m = Math.min(num_pid_m - first_pid_m, sim_GROUP_SIZE_M);
+                const pid_m = first_pid_m + ((current_pid % num_pid_in_group) % group_size_m);
+                const pid_n = Math.floor((current_pid % num_pid_in_group) / group_size_m);
+
+                const start_row = pid_m * sim_BLOCK_SIZE_M;
+                const start_col = pid_n * sim_BLOCK_SIZE_N;
+                const colorClass = `c-block-color-${current_pid % 10}`;
+
+                for (let i = 0; i < sim_BLOCK_SIZE_M; i++) {
+                    for (let j = 0; j < sim_BLOCK_SIZE_N; j++) {
+                        const row = start_row + i;
+                        const col = start_col + j;
+                        if (row < sim_M && col < sim_N) {
+                            const cell = document.getElementById(`C-${row}-${col}`);
+                            cell.classList.add('c-block-cell', colorClass);
+                            if (i === 0 && j === 0) {
+                                cell.innerText = current_pid;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function hideCBlocks() {
+            if (!isCBlockViewActive) return;
+
+            isCBlockViewActive = false;
+            showBlocksBtn.innerText = 'Show C Blocks';
+
+            for (let m = 0; m < sim_M; m++) {
+                for (let n = 0; n < sim_N; n++) {
+                    const cell = document.getElementById(`C-${m}-${n}`);
+                    for (let i = 0; i < 10; i++) cell.classList.remove(`c-block-color-${i}`);
+                    cell.classList.remove('c-block-cell');
+                    cell.innerText = C_matrix_values[m][n] || '';
+                }
+            }
+        }
+
+        function toggleCBlockView() {
+            if (isCBlockViewActive) hideCBlocks();
+            else showCBlocks();
+        }
+
+        function showABIndices() {
+            isIndexViewActive = true;
+            showIndicesBtn.innerText = 'Hide A/B Indices';
+            pauseAutoplay();
+            hideCBlocks();
+            clearHighlights();
+
+            for (let m = 0; m < sim_M; m++) {
+                for (let k = 0; k < sim_K; k++) {
+                    const cell = document.getElementById(`A-${m}-${k}`);
+                    if (cell) cell.innerText = m * sim_K + k;
+                }
+            }
+
+            for (let k = 0; k < sim_K; k++) {
+                for (let n = 0; n < sim_N; n++) {
+                    const cell = document.getElementById(`B-${k}-${n}`);
+                    if (cell) cell.innerText = k * sim_N + n;
+                }
+            }
+        }
+
+        function hideABIndices() {
+            if (!isIndexViewActive) return;
+
+            isIndexViewActive = false;
+            showIndicesBtn.innerText = 'Show A/B Indices';
+
+            for (let m = 0; m < sim_M; m++) {
+                for (let k = 0; k < sim_K; k++) {
+                    const cell = document.getElementById(`A-${m}-${k}`);
+                    if (cell) cell.innerText = A_matrix_values[m][k];
+                }
+            }
+
+            for (let k = 0; k < sim_K; k++) {
+                for (let n = 0; n < sim_N; n++) {
+                    const cell = document.getElementById(`B-${k}-${n}`);
+                    if (cell) cell.innerText = B_matrix_values[k][n];
+                }
+            }
+        }
+
+        function toggleIndexView() {
+            if (isIndexViewActive) hideABIndices();
+            else showABIndices();
+        }
+
+
         function updateVisibleTooltip() {
             if (!hoveredTooltipTarget) return;
 
@@ -786,30 +938,23 @@
             const tooltipFunc = lineTooltipCalculations[lineIndex];
 
             if (tooltipFunc && pid < grid_size) {
-                // This logic is duplicated from the mouseover event to get the current state
-                const num_pid_in_group = GROUP_SIZE_M * num_pid_n;
+                const num_pid_in_group = sim_GROUP_SIZE_M * num_pid_n;
                 const group_id = Math.floor(pid / num_pid_in_group);
-                const first_pid_m = group_id * GROUP_SIZE_M;
-                const group_size_m = Math.min(num_pid_m - first_pid_m, GROUP_SIZE_M);
+                const first_pid_m = group_id * sim_GROUP_SIZE_M;
+                const group_size_m = Math.min(num_pid_m - first_pid_m, sim_GROUP_SIZE_M);
                 const pid_m = first_pid_m + ((pid % num_pid_in_group) % group_size_m);
                 const pid_n = Math.floor((pid % num_pid_in_group) / group_size_m);
 
-                const state = { pid_m, pid_n, k_loop_iter, M, N, K, BLOCK_SIZE_M, BLOCK_SIZE_N, BLOCK_SIZE_K, A_matrix_values, B_matrix_values };
+                const state = { pid_m, pid_n, k_loop_iter, M: sim_M, N: sim_N, K: sim_K, BLOCK_SIZE_M: sim_BLOCK_SIZE_M, BLOCK_SIZE_N: sim_BLOCK_SIZE_N, BLOCK_SIZE_K: sim_BLOCK_SIZE_K, A_matrix_values, B_matrix_values };
                 globalTooltip.innerHTML = tooltipFunc(state);
 
-                // We also need to reposition it, as content changes can affect size
                 const rect = hoveredTooltipTarget.getBoundingClientRect();
                 const tooltipRect = globalTooltip.getBoundingClientRect();
 
-                // Keep it from going off-screen
                 let top = rect.top - tooltipRect.height - 8;
                 let left = rect.left;
-                if (top < 0) {
-                    top = rect.bottom + 8;
-                }
-                if (left + tooltipRect.width > window.innerWidth) {
-                    left = window.innerWidth - tooltipRect.width - 8;
-                }
+                if (top < 0) top = rect.bottom + 8;
+                if (left + tooltipRect.width > window.innerWidth) left = window.innerWidth - tooltipRect.width - 8;
 
                 globalTooltip.style.left = `${left}px`;
                 globalTooltip.style.top = `${top}px`;
@@ -823,42 +968,35 @@
         autoplayBtn.addEventListener('click', startAutoplay);
         pauseBtn.addEventListener('click', pauseAutoplay);
         speedSlider.addEventListener('input', handleSpeedChange);
+        showBlocksBtn.addEventListener('click', toggleCBlockView);
+        showIndicesBtn.addEventListener('click', toggleIndexView);
 
         codeDisplay.addEventListener('mouseover', (e) => {
             const target = e.target.closest('.has-tooltip');
             if (!target) return;
 
-            hoveredTooltipTarget = target; // Set the currently hovered element
-            updateVisibleTooltip(); // Show and position the tooltip immediately
+            hoveredTooltipTarget = target;
+            updateVisibleTooltip();
             globalTooltip.classList.add('visible');
         });
 
         codeDisplay.addEventListener('mouseout', (e) => {
             const target = e.target.closest('.has-tooltip');
             if (target) {
-                hoveredTooltipTarget = null; // Clear the hovered element
+                hoveredTooltipTarget = null;
                 globalTooltip.classList.remove('visible');
             }
         });
 
-        // --- NEW: Keyboard Support ---
         document.addEventListener('keydown', (e) => {
-            // Use Spacebar to toggle play/pause
             if (e.code === 'Space') {
-                e.preventDefault(); // Prevent default browser action (like scrolling)
-                if (isAutoplaying) {
-                    pauseAutoplay();
-                } else {
-                    startAutoplay();
-                }
+                e.preventDefault();
+                if (isAutoplaying) pauseAutoplay();
+                else startAutoplay();
             }
-            // Use Right Arrow to step forward
             else if (e.code === 'ArrowRight') {
                 e.preventDefault();
-                // Only allow stepping if not currently autoplaying and the button is enabled
-                if (!isAutoplaying && !stepBtn.disabled) {
-                    step();
-                }
+                if (!isAutoplaying && !stepBtn.disabled) step();
             }
         });
 
